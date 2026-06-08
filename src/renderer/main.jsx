@@ -822,41 +822,43 @@ function Preparing({ selected, progress, error, onCancel }) {
 function RevertTrust({ onBack, onNext }) {
   return (
     <ScreenShell
-      title="Go Back to Windows is always available"
-      subtitle="Shift recorded your exact partition layout and boot configuration before making any changes. You can undo everything safely."
+      title="You can always go back to Windows"
+      subtitle="Before Shift changed anything, it saved a snapshot of your computer exactly as it was. If you ever want Windows back the way it was, you can — safely."
       onBack={onBack}
       onNext={onNext}
       nextLabel="Continue to Restart"
     >
       <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/10 p-6">
-        <h3 className="text-xl font-bold text-emerald-100">Your safety net is in place</h3>
+        <h3 className="text-xl font-bold text-emerald-100">Your undo button is ready</h3>
         <p className="mt-3 leading-relaxed text-white/75">
-          A restore manifest was saved to both your Windows partition and Linux partition. This is the source of truth
-          for reverting — Shift verifies the checksum and partition math before touching anything.
+          Shift saved a restore plan on your Windows drive and on the new Linux side. Your photos, documents, and apps
+          on Windows stay put — undo only removes Linux and gives that space back to Windows.
         </p>
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <h4 className="font-semibold text-shift-accent">From Linux (after install)</h4>
-          <p className="mt-2 text-sm text-white/65">
-            Open <strong className="font-semibold text-white">Sentinel — Go Back to Windows</strong> from your app menu.
-            One button, one confirmation — Linux is removed and Windows is restored exactly as it was.
+          <h4 className="font-semibold text-shift-accent">After Linux is installed</h4>
+          <p className="mt-2 text-sm leading-relaxed text-white/65">
+            Open your app menu and choose{" "}
+            <strong className="font-semibold text-white">Sentinel — Go Back to Windows</strong>. Tap one button, confirm
+            once, and Shift puts Windows back exactly how it was.
           </p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <h4 className="font-semibold text-shift-accent">From the boot menu</h4>
-          <p className="mt-2 text-sm text-white/65">
-            At startup, choose <strong className="font-semibold text-white">Sentinel — Go Back to Windows</strong> even if
-            you cannot boot into Linux. Windows restarts and runs the safe restore automatically.
+          <h4 className="font-semibold text-shift-accent">When your computer starts up</h4>
+          <p className="mt-2 text-sm leading-relaxed text-white/65">
+            On the startup menu, pick{" "}
+            <strong className="font-semibold text-white">Sentinel — Go Back to Windows</strong> — even if Linux will not
+            boot. Windows opens and runs the restore for you automatically.
           </p>
         </div>
       </div>
 
-      <ul className="mt-6 list-disc space-y-2 pl-6 text-sm text-white/60">
-        <li>Your Windows files and data stay on the Windows partition — revert only removes Linux and expands C: back.</li>
-        <li>Restore files live in <code className="text-white/80">C:\ShiftRestore\</code> and on the Linux partition.</li>
-        <li>Revert never runs if the manifest is missing or corrupt.</li>
+      <ul className="mt-6 list-disc space-y-2 pl-6 text-sm leading-relaxed text-white/60">
+        <li>Your Windows files are not deleted — only the Linux side is removed.</li>
+        <li>Shift double-checks its restore plan before changing anything. If something looks wrong, it stops.</li>
+        <li>You do not need to be a computer expert. The app walks you through it in plain language.</li>
       </ul>
     </ScreenShell>
   );
@@ -891,7 +893,7 @@ function Ready({ selected, onBack }) {
       </div>
       <ul className="mt-6 list-disc space-y-3 pl-6 text-white/70">
         <li>Your computer will restart into the {selected.name} installer.</li>
-        <li>If you change your mind later, use Sentinel — Go Back to Windows from Linux or the boot menu.</li>
+        <li>If you change your mind later, open Sentinel — Go Back to Windows from your Linux app menu, or pick it on the startup menu.</li>
         <li>You will choose your language, keyboard, and account name.</li>
         <li>If Secure Boot blocks the installer, Shift will guide you through disabling it.</li>
       </ul>

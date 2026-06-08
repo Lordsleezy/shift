@@ -129,3 +129,27 @@ See git diff for:
 5. On spare VM with snapshot: apply partition, confirm C: data intact, new partition formatted
 6. Preparing: confirm ISO download + SHA256 pass
 7. Reboot test on spare hardware only
+
+---
+
+## 8. Go Back to Windows revert (2026-06-08)
+
+### Implemented
+- Pre-partition snapshot: layout, BCD entries, drive letters (`restore-manifest.js`)
+- Dual manifest write: `C:\ShiftRestore\` + Linux partition `ShiftRestore\`
+- Boot menu entry: **`Sentinel — Go Back to Windows`** via `bcdedit` + ESP GRUB stub (`revert-boot.js`)
+- Linux companion: **Sentinel — Go Back to Windows** app menu entry (`companion/`)
+- Wizard step 8: plain-language trust screen before restart
+- Revert validates manifest checksum and partition math before any disk changes
+
+### Known items to verify during Legion testing (real hardware)
+
+| Item | What to test | Risk if broken |
+|------|----------------|------------------|
+| **ESP GRUB write to NTFS** | Boot menu entry → GRUB writes `BOOT_TRIGGER_REVERT` on C: via `insmod ntfs` + `write`, then chainloads Windows | Revert from boot menu may not trigger; Linux companion still works |
+| **Linux companion `parted` paths** | Run companion on target distros (Zorin, Mint, Ubuntu, etc.) after full install | Revert from Linux app may fail on some partition layouts |
+| **Boot menu → trigger → scheduled task → revert** | Select **Sentinel — Go Back to Windows** at UEFI boot → Windows starts → `SentinelRevertBootTrigger` runs `revert.ps1` | Boot-menu revert path incomplete; Windows-side manual revert still available |
+
+### Boot menu entry name (confirmed in code)
+- Linux install: `Shift: {distro name}` (e.g. `Shift: Zorin OS`)
+- Revert: **`Sentinel — Go Back to Windows`** — appears in Windows boot manager alongside Windows and Linux entries

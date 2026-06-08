@@ -6,6 +6,7 @@ const { startInstall, cancelInstall, rebootToInstall } = require("./install");
 const { executeRevertFromWindows, rebootAfterRevert } = require("./revert");
 const { loadManifestFromWindows } = require("./restore-manifest");
 const { checkDemoReady, startDemo, cancelDemoFlow } = require("./demo");
+const { maybeShowQemuPrompt } = require("./qemu-prompt");
 
 const isDev = process.env.NODE_ENV === "development";
 let mainWindow = null;
@@ -115,6 +116,7 @@ ipcMain.handle("demo:cancel", async () => {
 
 app.whenReady().then(async () => {
   await createWindow();
+  maybeShowQemuPrompt(mainWindow).catch(() => {});
 
   app.on("activate", async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
