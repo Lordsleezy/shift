@@ -414,18 +414,136 @@ function DemoPreview({ entry }) {
   );
 }
 
+function DemoOverlay({ entry, progress, error, onCancel }) {
+  const phase = progress?.phase || "download";
+  const percent = progress?.percent ?? 0;
+  const isRunning = phase === "running";
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-shift-navy p-8 shadow-glow">
+        <h2 className="text-2xl font-bold">{isRunning ? `Trying ${entry.name}` : `Preparing ${entry.name} demo`}</h2>
+        <p className="mt-2 text-sm text-white/60">
+          {isRunning
+            ? "The desktop opens in a separate window. This is a live session — nothing is installed. Close the window when you are done."
+            : progress?.message || "Please wait…"}
+        </p>
+
+        {!isRunning && (
+          <>
+            {progress?.total > 0 && (
+              <p className="mt-2 text-xs text-white/45">
+                {formatBytes(progress.received)} / {formatBytes(progress.total)}
+              </p>
+            )}
+            <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-shift-accent transition-all" style={{ width: `${percent}%` }} />
+            </div>
+          </>
+        )}
+
+        {error && (
+          <div className="mt-5 rounded-2xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</div>
+        )}
+
+        {!isRunning && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="mt-6 rounded-xl border border-white/15 px-5 py-3 text-sm hover:bg-white/5"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function OSPicker({ device, catalog, selectedId, setSelectedId, expandedId, setExpandedId, onBack, onNext }) {
   const selected = catalog.find((e) => e.id === selectedId);
   const nextBlocked = selected?.comingSoon || selected?.manualDownloadOnly;
+  const [isoStatus, setIsoStatus] = useState({});
+  const [demoEntry, setDemoEntry] = useState(null);
+  const [demoProgress, setDemoProgress] = useState(null);
+  const [demoError, setDemoError] = useState("");
+  const demoActive = useRef(false);
+
+  useEffect(() => {
+    if (!expandedId || !window.shiftAPI?.getDemoStatus) return;
+    window.shiftAPI.getDemoStatus(expandedId).then((status) => {
+      setIsoStatus((prev) => ({ ...prev, [expandedId]: status }));
+    });
+  }, [expandedId]);
+
+  async function handleTryDemo(entry) {
+    if (entry.comingSoon || entry.manualDownloadOnly || demoActive.current) return;
+    setSelectedId(entry.id);
+    setDemoEntry(entry);
+    setDemoError("");
+    setDemoProgress({ phase: "download", percent: 0, message: "Checking ISO…" });
+    demoActive.current = true;
+
+    const unsub = window.shiftAPI.onDemoProgress?.((data) => setDemoProgress(data));
+    let failed = false;
+
+    try {
+      const status = await window.shiftAPI.getDemoStatus(entry.id);
+      if (!status.qemuInstalled) {
+        throw new Error(
+          "QEMU is not installed. Install QEMU from qemu.org/download (Windows: QEMU for Windows), then try again."
+        );
+      }
+
+      const result = await window.shiftAPI.startDemo(entry.id);
+      if (!result?.ok) throw new Error(result?.error || "Demo failed to start");
+
+      setIsoStatus((prev) => ({
+        ...prev,
+        [entry.id]: { ...status, downloaded: true, available: true }
+      }));
+    } catch (err) {
+      failed = true;
+      setDemoError(err.message || String(err));
+    } finally {
+      unsub?.();
+      demoActive.current = false;
+      if (!failed) {
+        setDemoEntry(null);
+        setDemoProgress(null);
+      }
+    }
+  }
+
+  function cancelDemo() {
+    window.shiftAPI?.cancelDemo?.();
+    demoActive.current = false;
+    setDemoEntry(null);
+    setDemoProgress(null);
+    setDemoError("");
+  }
+
+  const demoOpen = Boolean(demoEntry);
+  const demoRunning = demoProgress?.phase === "running";
 
   return (
-    <ScreenShell
-      title="Pick your new operating system"
-      subtitle="Sorted by how well each option fits your device. Expand a card to preview it."
-      onBack={onBack}
-      onNext={onNext}
-      nextDisabled={nextBlocked}
-    >
+    <>
+      {demoOpen && (
+        <DemoOverlay
+          entry={demoEntry}
+          progress={demoProgress}
+          error={demoError}
+          onCancel={cancelDemo}
+        />
+      )}
+      <ScreenShell
+        title="Pick your new operating system"
+        subtitle="Try a live demo in a virtual machine, or continue to install on your drive."
+        onBack={onBack}
+        onNext={onNext}
+        nextDisabled={nextBlocked || demoRunning}
+        nextLabel="Install"
+      >
       <div className="grid gap-4 md:grid-cols-2">
         {catalog.map((entry) => {
           const compatibility = getCompatibility(entry, device);
@@ -489,6 +607,24 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, expandedId, setE
                       </a>
                     </p>
                   )}
+                  {!entry.comingSoon && !entry.manualDownloadOnly && (
+                    <div className="flex flex-wrap items-center gap-3 pt-2">
+                      <button
+                        type="button"
+                        disabled={demoRunning}
+                        onClick={() => handleTryDemo(entry)}
+                        className="rounded-xl border border-shift-accent/50 bg-shift-accent/15 px-4 py-2 text-sm font-semibold text-shift-accent hover:bg-shift-accent/25 disabled:opacity-40"
+                      >
+                        Try Demo
+                      </button>
+                      {isoStatus[entry.id]?.downloaded && (
+                        <span className="text-xs text-emerald-300/90">ISO ready — install will skip download</span>
+                      )}
+                      {isoStatus[entry.id]?.downloaded === false && isoStatus[entry.id]?.available && (
+                        <span className="text-xs text-white/45">Demo will download the ISO first</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -496,6 +632,7 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, expandedId, setE
         })}
       </div>
     </ScreenShell>
+    </>
   );
 }
 

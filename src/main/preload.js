@@ -13,5 +13,13 @@ contextBridge.exposeInMainWorld("shiftAPI", {
     const listener = (_event, data) => callback(data);
     ipcRenderer.on("install:progress", listener);
     return () => ipcRenderer.removeListener("install:progress", listener);
+  },
+  getDemoStatus: (distroId) => ipcRenderer.invoke("demo:status", { distroId }),
+  startDemo: (distroId) => ipcRenderer.invoke("demo:start", { distroId }),
+  cancelDemo: () => ipcRenderer.invoke("demo:cancel"),
+  onDemoProgress: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on("demo:progress", listener);
+    return () => ipcRenderer.removeListener("demo:progress", listener);
   }
 });

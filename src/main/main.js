@@ -3,6 +3,7 @@ const path = require("path");
 const { getDeviceReport, extractWindowsProductKey, saveWindowsProductKey } = require("./system");
 const { getDriveLayout, applyPartitionPlan } = require("./partition");
 const { startInstall, cancelInstall, rebootToInstall } = require("./install");
+const { checkDemoReady, startDemo, cancelDemoFlow } = require("./demo");
 
 const isDev = process.env.NODE_ENV === "development";
 let mainWindow = null;
@@ -36,6 +37,12 @@ function sendProgress(data) {
   }
 }
 
+function sendDemoProgress(data) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("demo:progress", data);
+  }
+}
+
 ipcMain.handle("device:get-report", async () => getDeviceReport());
 
 ipcMain.handle("key:extract", async () => extractWindowsProductKey());
@@ -61,6 +68,22 @@ ipcMain.handle("install:cancel", async () => {
 });
 
 ipcMain.handle("install:reboot", async () => rebootToInstall());
+
+ipcMain.handle("demo:status", async (_event, { distroId }) => checkDemoReady(distroId));
+
+ipcMain.handle("demo:start", async (_event, { distroId }) => {
+  try {
+    const result = await startDemo(distroId, sendDemoProgress);
+    return { ok: true, result };
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) };
+  }
+});
+
+ipcMain.handle("demo:cancel", async () => {
+  cancelDemoFlow();
+  return { ok: true };
+});
 
 app.whenReady().then(async () => {
   await createWindow();
