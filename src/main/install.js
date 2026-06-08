@@ -3,8 +3,16 @@ const path = require("path");
 const { getInstallDir } = require("./paths");
 const { ensureIsoDownloaded } = require("./iso");
 const { loadPartitionPlan } = require("./partition");
-const { extractIsoToPartition, configureGrub } = require("./extract");
+const { extractIsoToPartition } = require("./extract");
 const { getDistroName } = require("./distro-sources");
+const {
+  enrichPartitionResult,
+  finalizeManifest,
+  writeManifestCopies
+} = require("./restore-manifest");
+const { configureRevertBootEntries } = require("./revert-boot");
+const { deployRevertScripts, registerBootTriggerTask } = require("./revert");
+const { deployCompanionToLinuxPartition } = require("./companion");
 
 let activeController = null;
 
@@ -21,6 +29,8 @@ function phaseLabel(phase) {
     verify: "Verifying SHA256 checksum",
     extract: "Extracting installer to Linux partition",
     grub: "Configuring GRUB bootloader",
+    restore: "Writing restore manifest and Go Back to Windows",
+    companion: "Installing Sentinel Revert companion",
     done: "Ready to install"
   };
   return labels[phase] || phase;
@@ -44,13 +54,35 @@ async function startInstall(distroId, onProgress) {
   await extractIsoToPartition(isoPath, partitionPlan, (p) => emit(onProgress, p));
 
   emit(onProgress, { phase: "grub", received: 0, total: 0, percent: 0 });
-  await configureGrub(partitionPlan, getDistroName(distroId), (p) => emit(onProgress, p));
+  const shiftBoot = await configureRevertBootEntries(partitionPlan, getDistroName(distroId));
+  emit(onProgress, { phase: "grub", received: 100, total: 100, percent: 100 });
+
+  emit(onProgress, { phase: "restore", received: 0, total: 100, percent: 10 });
+  let preSnapshot = null;
+  try {
+    preSnapshot = JSON.parse(await fs.readFile(path.join(getInstallDir(), "pre-restore-snapshot.json"), "utf8"));
+  } catch {
+    throw new Error("Pre-change restore snapshot missing. Cannot proceed without a safe revert path.");
+  }
+
+  const enrichedPlan = await enrichPartitionResult(partitionPlan, partitionPlan);
+  const restoreManifest = finalizeManifest(preSnapshot, enrichedPlan, shiftBoot);
+  const manifestPaths = await writeManifestCopies(restoreManifest, enrichedPlan.linuxDriveLetter);
+  await deployRevertScripts(restoreManifest);
+  await registerBootTriggerTask();
+  emit(onProgress, { phase: "restore", received: 100, total: 100, percent: 100 });
+
+  emit(onProgress, { phase: "companion", received: 0, total: 100, percent: 10 });
+  await deployCompanionToLinuxPartition(enrichedPlan.linuxDriveLetter);
+  emit(onProgress, { phase: "companion", received: 100, total: 100, percent: 100 });
 
   const manifest = {
     distroId,
     distroName: getDistroName(distroId),
     isoPath,
-    partitionPlan,
+    partitionPlan: enrichedPlan,
+    restoreManifest,
+    restoreManifestPaths: manifestPaths,
     completedAt: new Date().toISOString()
   };
   await fs.writeFile(path.join(getInstallDir(), "manifest.json"), JSON.stringify(manifest, null, 2));

@@ -38,6 +38,7 @@
       "dist/**/*",
       "src/main/**/*",
       "src/shared/**/*",
+      "companion/**/*",
       "assets/**/*",
       "package.json"
     ],

@@ -11,7 +11,8 @@ const SCREEN = {
   BACKUP: 4,
   PARTITION: 5,
   PREPARING: 6,
-  READY: 7
+  REVERT: 7,
+  READY: 8
 };
 
 const SCREEN_LABELS = [
@@ -22,15 +23,18 @@ const SCREEN_LABELS = [
   "Backup",
   "Partition",
   "Preparing",
+  "Go Back",
   "Ready"
 ];
 
-const PHASES = ["download", "verify", "extract", "grub", "done"];
+const PHASES = ["download", "verify", "extract", "grub", "restore", "companion", "done"];
 const PHASE_LABELS = {
   download: "Downloading",
   verify: "Verifying",
   extract: "Extracting",
   grub: "Bootloader",
+  restore: "Restore manifest",
+  companion: "Revert companion",
   done: "Ready"
 };
 
@@ -141,7 +145,7 @@ function App() {
     window.shiftAPI
       ?.startInstall?.({ distroId: selectedId })
       .then((result) => {
-        if (result?.ok) setScreen(SCREEN.READY);
+        if (result?.ok) setScreen(SCREEN.REVERT);
         else setInstallError(result?.error || "Install preparation failed");
       })
       .catch((err) => setInstallError(err.message || String(err)));
@@ -238,6 +242,9 @@ function App() {
                 setScreen(SCREEN.OS);
               }}
             />
+          )}
+          {!device?.sMode && screen === SCREEN.REVERT && (
+            <RevertTrust onBack={() => setScreen(SCREEN.OS)} onNext={() => setScreen(SCREEN.READY)} />
           )}
           {!device?.sMode && screen === SCREEN.READY && (
             <Ready selected={selected} onBack={() => setScreen(SCREEN.OS)} />
@@ -789,7 +796,7 @@ function Preparing({ selected, progress, error, onCancel }) {
           <div className="h-full rounded-full bg-shift-accent transition-all" style={{ width: `${percent}%` }} />
         </div>
 
-        <div className="mt-6 grid grid-cols-5 gap-2 text-center text-xs sm:text-sm">
+        <div className="mt-6 grid grid-cols-7 gap-2 text-center text-xs sm:text-sm">
           {PHASES.map((name) => (
             <div
               key={name}
@@ -809,6 +816,49 @@ function Preparing({ selected, progress, error, onCancel }) {
         </button>
       </div>
     </section>
+  );
+}
+
+function RevertTrust({ onBack, onNext }) {
+  return (
+    <ScreenShell
+      title="Go Back to Windows is always available"
+      subtitle="Shift recorded your exact partition layout and boot configuration before making any changes. You can undo everything safely."
+      onBack={onBack}
+      onNext={onNext}
+      nextLabel="Continue to Restart"
+    >
+      <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/10 p-6">
+        <h3 className="text-xl font-bold text-emerald-100">Your safety net is in place</h3>
+        <p className="mt-3 leading-relaxed text-white/75">
+          A restore manifest was saved to both your Windows partition and Linux partition. This is the source of truth
+          for reverting — Shift verifies the checksum and partition math before touching anything.
+        </p>
+      </div>
+
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h4 className="font-semibold text-shift-accent">From Linux (after install)</h4>
+          <p className="mt-2 text-sm text-white/65">
+            Open <strong className="font-semibold text-white">Sentinel — Go Back to Windows</strong> from your app menu.
+            One button, one confirmation — Linux is removed and Windows is restored exactly as it was.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h4 className="font-semibold text-shift-accent">From the boot menu</h4>
+          <p className="mt-2 text-sm text-white/65">
+            At startup, choose <strong className="font-semibold text-white">Sentinel — Go Back to Windows</strong> even if
+            you cannot boot into Linux. Windows restarts and runs the safe restore automatically.
+          </p>
+        </div>
+      </div>
+
+      <ul className="mt-6 list-disc space-y-2 pl-6 text-sm text-white/60">
+        <li>Your Windows files and data stay on the Windows partition — revert only removes Linux and expands C: back.</li>
+        <li>Restore files live in <code className="text-white/80">C:\ShiftRestore\</code> and on the Linux partition.</li>
+        <li>Revert never runs if the manifest is missing or corrupt.</li>
+      </ul>
+    </ScreenShell>
   );
 }
 
@@ -841,7 +891,7 @@ function Ready({ selected, onBack }) {
       </div>
       <ul className="mt-6 list-disc space-y-3 pl-6 text-white/70">
         <li>Your computer will restart into the {selected.name} installer.</li>
-        <li>Windows remains on your drive — you can dual-boot after installation.</li>
+        <li>If you change your mind later, use Sentinel — Go Back to Windows from Linux or the boot menu.</li>
         <li>You will choose your language, keyboard, and account name.</li>
         <li>If Secure Boot blocks the installer, Shift will guide you through disabling it.</li>
       </ul>

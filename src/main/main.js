@@ -3,6 +3,8 @@ const path = require("path");
 const { getDeviceReport, extractWindowsProductKey, saveWindowsProductKey } = require("./system");
 const { getDriveLayout, applyPartitionPlan } = require("./partition");
 const { startInstall, cancelInstall, rebootToInstall } = require("./install");
+const { executeRevertFromWindows, rebootAfterRevert } = require("./revert");
+const { loadManifestFromWindows } = require("./restore-manifest");
 const { checkDemoReady, startDemo, cancelDemoFlow } = require("./demo");
 
 const isDev = process.env.NODE_ENV === "development";
@@ -68,6 +70,32 @@ ipcMain.handle("install:cancel", async () => {
 });
 
 ipcMain.handle("install:reboot", async () => rebootToInstall());
+
+function sendRevertProgress(data) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("revert:progress", data);
+  }
+}
+
+ipcMain.handle("revert:validate", async () => {
+  try {
+    const { manifest, validation } = await loadManifestFromWindows();
+    return { ok: validation.ok, manifest, errors: validation.errors };
+  } catch (error) {
+    return { ok: false, errors: [error.message || String(error)] };
+  }
+});
+
+ipcMain.handle("revert:execute", async () => {
+  try {
+    const result = await executeRevertFromWindows(sendRevertProgress);
+    return { ok: true, result };
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) };
+  }
+});
+
+ipcMain.handle("revert:reboot", async () => rebootAfterRevert());
 
 ipcMain.handle("demo:status", async (_event, { distroId }) => checkDemoReady(distroId));
 

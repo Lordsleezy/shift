@@ -9,6 +9,14 @@ contextBridge.exposeInMainWorld("shiftAPI", {
   startInstall: (opts) => ipcRenderer.invoke("install:start", opts),
   cancelInstall: () => ipcRenderer.invoke("install:cancel"),
   rebootToInstall: () => ipcRenderer.invoke("install:reboot"),
+  validateRevertManifest: () => ipcRenderer.invoke("revert:validate"),
+  executeRevert: () => ipcRenderer.invoke("revert:execute"),
+  rebootAfterRevert: () => ipcRenderer.invoke("revert:reboot"),
+  onRevertProgress: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on("revert:progress", listener);
+    return () => ipcRenderer.removeListener("revert:progress", listener);
+  },
   onInstallProgress: (callback) => {
     const listener = (_event, data) => callback(data);
     ipcRenderer.on("install:progress", listener);

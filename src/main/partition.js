@@ -3,6 +3,7 @@ const { promisify } = require("util");
 const fs = require("fs/promises");
 const path = require("path");
 const { getInstallDir } = require("./paths");
+const { capturePreChangeSnapshot } = require("./restore-manifest");
 
 const execFileAsync = promisify(execFile);
 
@@ -145,7 +146,14 @@ async function applyPartitionPlan(linuxBytes) {
   }
 
   const planPath = path.join(getInstallDir(), "partition-plan.json");
+  const snapshotPath = path.join(getInstallDir(), "pre-restore-snapshot.json");
   await fs.mkdir(getInstallDir(), { recursive: true });
+
+  let preChangeSnapshot = null;
+  if (process.platform === "win32") {
+    preChangeSnapshot = await capturePreChangeSnapshot();
+    await fs.writeFile(snapshotPath, JSON.stringify(preChangeSnapshot, null, 2));
+  }
 
   if (process.platform === "win32") {
     const script = `
