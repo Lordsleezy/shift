@@ -30,6 +30,9 @@ jobs:
       - name: Build renderer
         run: npm run build:renderer
 
+      - name: Bundle QEMU for Try Demo
+        run: npm run fetch:qemu
+
       - name: Build Windows NSIS installer
         run: npx electron-builder --win nsis --x64
         env:

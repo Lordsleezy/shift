@@ -153,3 +153,32 @@ See git diff for:
 ### Boot menu entry name (confirmed in code)
 - Linux install: `Shift: {distro name}` (e.g. `Shift: Zorin OS`)
 - Revert: **`Sentinel — Go Back to Windows`** — appears in Windows boot manager alongside Windows and Linux entries
+
+---
+
+## 9. Bundled dependencies (2026-06-08)
+
+### Rule
+One `.exe` install — zero additional downloads or separate installs for Shift features.
+
+### Bundled with the Windows installer
+| Component | Purpose | Location |
+|-----------|---------|----------|
+| **QEMU** (`qemu-system-x86_64.exe` + DLLs + firmware) | Try Demo live VM | `resources/qemu/` via `extraResources` |
+
+Fetched at build time by `scripts/fetch-qemu-win.js` (Stefan Weil W64 build, pinned version). Not committed to git.
+
+### Uses OS built-ins (no separate install)
+| Tool | Purpose |
+|------|---------|
+| PowerShell | Partition, BCD, revert scripts |
+| `bcdedit` | Boot entries |
+| `robocopy` | ISO extract |
+| `Resize-Partition` / `Get-Partition` | Disk layout |
+| `shutdown.exe` | Reboot |
+
+### Not bundled (by design)
+| Item | Reason |
+|------|--------|
+| Linux ISOs | Downloaded on demand to `%APPDATA%` during install/demo |
+| Linux companion `parted` / `zenity` | Runs on installed Linux, not Windows |

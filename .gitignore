@@ -1,6 +1,9 @@
 node_modules/
 dist/
 build/
+resources/qemu-win/
+.qemu-staging/
+.qemu-installer*.exe
 .env
 .env.*
 *.log

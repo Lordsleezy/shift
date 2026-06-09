@@ -496,12 +496,6 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, expandedId, setE
 
     try {
       const status = await window.shiftAPI.getDemoStatus(entry.id);
-      if (!status.qemuInstalled) {
-        throw new Error(
-          "QEMU is not installed. Install QEMU from qemu.org/download (Windows: QEMU for Windows), then try again."
-        );
-      }
-
       const result = await window.shiftAPI.startDemo(entry.id);
       if (!result?.ok) throw new Error(result?.error || "Demo failed to start");
 

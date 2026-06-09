@@ -10,8 +10,9 @@
     "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && cross-env NODE_ENV=development electron .\"",
     "start": "electron .",
     "build:renderer": "vite build && node scripts/copy-assets.js",
-    "build": "npm run build:renderer && electron-builder",
-    "pack": "npm run build:renderer && electron-builder --dir"
+    "fetch:qemu": "node scripts/fetch-qemu-win.js",
+    "build": "npm run build:renderer && npm run fetch:qemu && electron-builder",
+    "pack": "npm run build:renderer && npm run fetch:qemu && electron-builder --dir"
   },
   "dependencies": {},
   "devDependencies": {
@@ -41,6 +42,13 @@
       "companion/**/*",
       "assets/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/qemu-win",
+        "to": "qemu",
+        "filter": ["**/*"]
+      }
     ],
     "win": {
       "target": ["nsis"],

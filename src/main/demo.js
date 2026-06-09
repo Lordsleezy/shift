@@ -1,6 +1,7 @@
 const os = require("os");
 const { ensureIsoDownloaded, getIsoStatus } = require("./iso");
 const { launchDemo, cancelDemo, isDemoRunning, findQemuBinary } = require("./qemu");
+const { getBundledQemuBinary } = require("./qemu-bundle");
 const { getDistroName } = require("./distro-sources");
 
 let demoDownloadController = null;
@@ -24,11 +25,13 @@ function phaseMessage(phase) {
 
 async function checkDemoReady(distroId) {
   const iso = await getIsoStatus(distroId);
-  const qemuPath = await findQemuBinary();
+  const bundled = getBundledQemuBinary();
+  const qemuPath = bundled || (await findQemuBinary());
   return {
     ...iso,
     qemuInstalled: Boolean(qemuPath),
-    qemuPath
+    qemuPath,
+    qemuBundled: Boolean(bundled)
   };
 }
 
