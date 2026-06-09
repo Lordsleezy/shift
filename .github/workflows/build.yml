@@ -33,8 +33,8 @@ jobs:
       - name: Bundle QEMU for Try Demo
         run: npm run fetch:qemu
 
-      - name: Build Windows NSIS installer
-        run: npx electron-builder --win nsis --x64
+      - name: Build and publish Windows NSIS installer
+        run: npx electron-builder --win nsis --x64 --publish always
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -46,18 +46,5 @@ jobs:
           path: |
             build/*.exe
             build/*.exe.blockmap
+            build/latest.yml
           if-no-files-found: error
-
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: build-${{ github.run_number }}
-          name: Shift by Sentinel — Build ${{ github.run_number }}
-          body: |
-            Automated Windows NSIS installer built from commit ${{ github.sha }}.
-            Download the `.exe` below to install Shift by Sentinel.
-          files: |
-            build/*.exe
-            build/*.exe.blockmap
-          prerelease: true
-          generate_release_notes: true

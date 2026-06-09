@@ -88,7 +88,13 @@ function App() {
   const [partitionLayout, setPartitionLayout] = useState(null);
   const [linuxBytes, setLinuxBytes] = useState(null);
   const [partitionApplying, setPartitionApplying] = useState(false);
+  const [updateReady, setUpdateReady] = useState(false);
   const installStarted = useRef(false);
+
+  useEffect(() => {
+    const unsub = window.shiftAPI?.onUpdateReady?.(() => setUpdateReady(true));
+    return () => unsub?.();
+  }, []);
 
   useEffect(() => {
     async function loadDevice() {
@@ -166,6 +172,9 @@ function App() {
 
   return (
     <div className="dark">
+      {updateReady && (
+        <UpdateBanner onDismiss={() => setUpdateReady(false)} />
+      )}
       <div className="min-h-screen overflow-hidden bg-shift-surface text-white">
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(20,184,166,.18),transparent_34%),radial-gradient(circle_at_80%_10%,rgba(10,22,40,.95),transparent_28%)]" />
         <main className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-5">
@@ -253,6 +262,21 @@ function App() {
           <footer className="mt-auto pt-6 text-center text-xs text-white/45">by Sentinel Prime</footer>
         </main>
       </div>
+    </div>
+  );
+}
+
+function UpdateBanner({ onDismiss }) {
+  return (
+    <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-between gap-4 border-b border-shift-accent/40 bg-shift-accent px-5 py-3 text-shift-navy shadow-glow">
+      <p className="text-sm font-semibold md:text-base">Update available — restart to install</p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="shrink-0 rounded-lg border border-shift-navy/20 bg-shift-navy/10 px-4 py-1.5 text-sm font-semibold hover:bg-shift-navy/20"
+      >
+        Later
+      </button>
     </div>
   );
 }

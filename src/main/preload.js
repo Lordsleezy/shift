@@ -29,5 +29,10 @@ contextBridge.exposeInMainWorld("shiftAPI", {
     const listener = (_event, data) => callback(data);
     ipcRenderer.on("demo:progress", listener);
     return () => ipcRenderer.removeListener("demo:progress", listener);
+  },
+  onUpdateReady: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on("update:ready", listener);
+    return () => ipcRenderer.removeListener("update:ready", listener);
   }
 });

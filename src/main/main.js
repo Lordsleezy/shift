@@ -6,8 +6,8 @@ const { startInstall, cancelInstall, rebootToInstall } = require("./install");
 const { executeRevertFromWindows, rebootAfterRevert } = require("./revert");
 const { loadManifestFromWindows } = require("./restore-manifest");
 const { checkDemoReady, startDemo, cancelDemoFlow } = require("./demo");
+const { initUpdater } = require("./updater");
 
-const isDev = process.env.NODE_ENV === "development";
 let mainWindow = null;
 
 async function createWindow() {
@@ -26,10 +26,10 @@ async function createWindow() {
     }
   });
 
-  if (isDev) {
+  if (!app.isPackaged) {
     await mainWindow.loadURL("http://127.0.0.1:5173");
   } else {
-    await mainWindow.loadFile(path.join(__dirname, "../../dist/index.html"));
+    await mainWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"));
   }
 }
 
@@ -115,6 +115,7 @@ ipcMain.handle("demo:cancel", async () => {
 
 app.whenReady().then(async () => {
   await createWindow();
+  initUpdater(() => mainWindow);
 
   app.on("activate", async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
