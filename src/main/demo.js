@@ -4,7 +4,20 @@ const { launchDemo, cancelDemo, isDemoRunning, findQemuBinary } = require("./qem
 const { getBundledQemuBinary } = require("./qemu-bundle");
 const { getDistroName } = require("./distro-sources");
 
+const DEMO_UNSUPPORTED_ARM64_MESSAGE =
+  "Live demo requires an Intel or AMD processor. On your device you can still install directly — the installer handles everything.";
+
 let demoDownloadController = null;
+
+function getDemoCapability() {
+  if (process.platform === "win32" && os.arch() === "arm64") {
+    return {
+      demoSupported: false,
+      demoUnsupportedMessage: DEMO_UNSUPPORTED_ARM64_MESSAGE
+    };
+  }
+  return { demoSupported: true, demoUnsupportedMessage: null };
+}
 
 function emit(onProgress, data) {
   onProgress?.({
@@ -25,10 +38,12 @@ function phaseMessage(phase) {
 
 async function checkDemoReady(distroId) {
   const iso = await getIsoStatus(distroId);
-  const bundled = getBundledQemuBinary();
-  const qemuPath = bundled || (await findQemuBinary());
+  const capability = getDemoCapability();
+  const bundled = capability.demoSupported ? getBundledQemuBinary() : null;
+  const qemuPath = capability.demoSupported ? bundled || (await findQemuBinary()) : null;
   return {
     ...iso,
+    ...capability,
     qemuInstalled: Boolean(qemuPath),
     qemuPath,
     qemuBundled: Boolean(bundled)
@@ -36,6 +51,11 @@ async function checkDemoReady(distroId) {
 }
 
 async function startDemo(distroId, onProgress) {
+  const capability = getDemoCapability();
+  if (!capability.demoSupported) {
+    throw new Error(capability.demoUnsupportedMessage);
+  }
+
   if (isDemoRunning()) {
     throw new Error("A demo is already running");
   }
@@ -80,6 +100,7 @@ function cancelDemoFlow() {
 }
 
 module.exports = {
+  getDemoCapability,
   checkDemoReady,
   startDemo,
   cancelDemoFlow,

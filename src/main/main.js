@@ -6,6 +6,7 @@ const { startInstall, cancelInstall, rebootToInstall } = require("./install");
 const { executeRevertFromWindows, rebootAfterRevert } = require("./revert");
 const { loadManifestFromWindows } = require("./restore-manifest");
 const { checkDemoReady, startDemo, cancelDemoFlow } = require("./demo");
+const { ensureIsoDownloaded } = require("./iso");
 const { initUpdater } = require("./updater");
 
 let mainWindow = null;
@@ -42,6 +43,14 @@ function sendProgress(data) {
 function sendDemoProgress(data) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("demo:progress", data);
+  }
+}
+
+let isoDownloadController = null;
+
+function sendIsoProgress(data) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("iso:progress", data);
   }
 }
 
@@ -110,6 +119,24 @@ ipcMain.handle("demo:start", async (_event, { distroId }) => {
 
 ipcMain.handle("demo:cancel", async () => {
   cancelDemoFlow();
+  return { ok: true };
+});
+
+ipcMain.handle("iso:download", async (_event, { distroId }) => {
+  try {
+    isoDownloadController = new AbortController();
+    const result = await ensureIsoDownloaded(distroId, sendIsoProgress, isoDownloadController.signal);
+    return { ok: true, result };
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) };
+  } finally {
+    isoDownloadController = null;
+  }
+});
+
+ipcMain.handle("iso:cancel", async () => {
+  isoDownloadController?.abort();
+  isoDownloadController = null;
   return { ok: true };
 });
 

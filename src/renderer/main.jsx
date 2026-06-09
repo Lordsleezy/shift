@@ -75,7 +75,6 @@ function App() {
   const [screen, setScreen] = useState(SCREEN.WELCOME);
   const [device, setDevice] = useState(null);
   const [selectedId, setSelectedId] = useState("zorin");
-  const [expandedId, setExpandedId] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [backup, setBackup] = useState({
     Documents: false,
@@ -204,8 +203,6 @@ function App() {
               catalog={sortedCatalog}
               selectedId={selectedId}
               setSelectedId={setSelectedId}
-              expandedId={expandedId}
-              setExpandedId={setExpandedId}
               onBack={back}
               onNext={next}
             />
@@ -404,56 +401,21 @@ function WindowsKey({ device, onBack, onNext }) {
   );
 }
 
-function DemoPreview({ entry }) {
-  const [slide, setSlide] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => setSlide((s) => (s + 1) % entry.screenshots.length), 3000);
-    return () => clearInterval(timer);
-  }, [entry.screenshots.length]);
-
-  if (entry.demoVideoId) {
-    return (
-      <div className="relative aspect-video overflow-hidden rounded-2xl border border-white/10 bg-black">
-        <iframe
-          title={`${entry.name} demo`}
-          className="h-full w-full"
-          src={`https://www.youtube-nocookie.com/embed/${entry.demoVideoId}?rel=0&modestbranding=1`}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative aspect-video overflow-hidden rounded-2xl border border-white/10">
-      {entry.screenshots.map((shot, i) => (
-        <img
-          key={shot}
-          src={shot}
-          alt={`${entry.name} preview ${i + 1}`}
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${i === slide ? "opacity-100 animate-screenshot-pan" : "opacity-0"}`}
-        />
-      ))}
-      <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
-        {entry.screenshots.map((_, i) => (
-          <span key={i} className={`h-1.5 w-1.5 rounded-full ${i === slide ? "bg-shift-accent" : "bg-white/30"}`} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function DemoOverlay({ entry, progress, error, onCancel }) {
+function ProgressOverlay({ entry, mode, progress, error, onCancel }) {
   const phase = progress?.phase || "download";
   const percent = progress?.percent ?? 0;
-  const isRunning = phase === "running";
+  const isRunning = mode === "demo" && phase === "running";
+  const isDownload = mode === "download";
+  const title = isRunning
+    ? `Trying ${entry.name}`
+    : isDownload
+      ? `Downloading ${entry.name}`
+      : `Preparing ${entry.name} demo`;
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6 backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-shift-navy p-8 shadow-glow">
-        <h2 className="text-2xl font-bold">{isRunning ? `Trying ${entry.name}` : `Preparing ${entry.name} demo`}</h2>
+        <h2 className="text-2xl font-bold">{title}</h2>
         <p className="mt-2 text-sm text-white/60">
           {isRunning
             ? "The desktop opens in a separate window. This is a live session — nothing is installed. Close the window when you are done."
@@ -491,31 +453,77 @@ function DemoOverlay({ entry, progress, error, onCancel }) {
   );
 }
 
-function OSPicker({ device, catalog, selectedId, setSelectedId, expandedId, setExpandedId, onBack, onNext }) {
+function OSPicker({ device, catalog, selectedId, setSelectedId, onBack, onNext }) {
   const selected = catalog.find((e) => e.id === selectedId);
   const nextBlocked = selected?.comingSoon || selected?.manualDownloadOnly;
   const [isoStatus, setIsoStatus] = useState({});
-  const [demoEntry, setDemoEntry] = useState(null);
-  const [demoProgress, setDemoProgress] = useState(null);
-  const [demoError, setDemoError] = useState("");
-  const demoActive = useRef(false);
+  const [demoSupported, setDemoSupported] = useState(true);
+  const [demoUnsupportedMessage, setDemoUnsupportedMessage] = useState("");
+  const [overlayEntry, setOverlayEntry] = useState(null);
+  const [overlayMode, setOverlayMode] = useState(null);
+  const [overlayProgress, setOverlayProgress] = useState(null);
+  const [overlayError, setOverlayError] = useState("");
+  const actionActive = useRef(false);
 
   useEffect(() => {
-    if (!expandedId || !window.shiftAPI?.getDemoStatus) return;
-    window.shiftAPI.getDemoStatus(expandedId).then((status) => {
-      setIsoStatus((prev) => ({ ...prev, [expandedId]: status }));
+    if (!window.shiftAPI?.getDemoStatus) return;
+    Promise.all(catalog.map((entry) => window.shiftAPI.getDemoStatus(entry.id))).then((statuses) => {
+      const next = {};
+      statuses.forEach((status, i) => {
+        next[catalog[i].id] = status;
+      });
+      setIsoStatus(next);
+      const first = statuses[0];
+      if (first) {
+        setDemoSupported(first.demoSupported !== false);
+        setDemoUnsupportedMessage(first.demoUnsupportedMessage || "");
+      }
     });
-  }, [expandedId]);
+  }, [catalog]);
+
+  async function handleDownload(entry) {
+    if (entry.comingSoon || actionActive.current) return;
+    setSelectedId(entry.id);
+
+    if (entry.manualDownloadOnly) {
+      window.open(entry.manualDownloadUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    setOverlayEntry(entry);
+    setOverlayMode("download");
+    setOverlayError("");
+    setOverlayProgress({ phase: "download", percent: 0, message: "Checking ISO…" });
+    actionActive.current = true;
+
+    const unsub = window.shiftAPI.onIsoProgress?.((data) => setOverlayProgress(data));
+
+    try {
+      const result = await window.shiftAPI.downloadIso(entry.id);
+      if (!result?.ok) throw new Error(result?.error || "Download failed");
+      const status = await window.shiftAPI.getDemoStatus(entry.id);
+      setIsoStatus((prev) => ({ ...prev, [entry.id]: status }));
+      setOverlayEntry(null);
+      setOverlayMode(null);
+      setOverlayProgress(null);
+    } catch (err) {
+      setOverlayError(err.message || String(err));
+    } finally {
+      unsub?.();
+      actionActive.current = false;
+    }
+  }
 
   async function handleTryDemo(entry) {
-    if (entry.comingSoon || entry.manualDownloadOnly || demoActive.current) return;
+    if (entry.comingSoon || entry.manualDownloadOnly || !demoSupported || actionActive.current) return;
     setSelectedId(entry.id);
-    setDemoEntry(entry);
-    setDemoError("");
-    setDemoProgress({ phase: "download", percent: 0, message: "Checking ISO…" });
-    demoActive.current = true;
+    setOverlayEntry(entry);
+    setOverlayMode("demo");
+    setOverlayError("");
+    setOverlayProgress({ phase: "download", percent: 0, message: "Checking ISO…" });
+    actionActive.current = true;
 
-    const unsub = window.shiftAPI.onDemoProgress?.((data) => setDemoProgress(data));
+    const unsub = window.shiftAPI.onDemoProgress?.((data) => setOverlayProgress(data));
     let failed = false;
 
     try {
@@ -529,134 +537,120 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, expandedId, setE
       }));
     } catch (err) {
       failed = true;
-      setDemoError(err.message || String(err));
+      setOverlayError(err.message || String(err));
     } finally {
       unsub?.();
-      demoActive.current = false;
+      actionActive.current = false;
       if (!failed) {
-        setDemoEntry(null);
-        setDemoProgress(null);
+        setOverlayEntry(null);
+        setOverlayMode(null);
+        setOverlayProgress(null);
       }
     }
   }
 
-  function cancelDemo() {
-    window.shiftAPI?.cancelDemo?.();
-    demoActive.current = false;
-    setDemoEntry(null);
-    setDemoProgress(null);
-    setDemoError("");
+  function cancelOverlay() {
+    if (overlayMode === "download") {
+      window.shiftAPI?.cancelIsoDownload?.();
+    } else {
+      window.shiftAPI?.cancelDemo?.();
+    }
+    actionActive.current = false;
+    setOverlayEntry(null);
+    setOverlayMode(null);
+    setOverlayProgress(null);
+    setOverlayError("");
   }
 
-  const demoOpen = Boolean(demoEntry);
-  const demoRunning = demoProgress?.phase === "running";
+  const overlayOpen = Boolean(overlayEntry);
+  const demoRunning = overlayMode === "demo" && overlayProgress?.phase === "running";
+  const buttonClass =
+    "flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
     <>
-      {demoOpen && (
-        <DemoOverlay
-          entry={demoEntry}
-          progress={demoProgress}
-          error={demoError}
-          onCancel={cancelDemo}
+      {overlayOpen && (
+        <ProgressOverlay
+          entry={overlayEntry}
+          mode={overlayMode}
+          progress={overlayProgress}
+          error={overlayError}
+          onCancel={cancelOverlay}
         />
       )}
       <ScreenShell
         title="Pick your new operating system"
-        subtitle="Try a live demo in a virtual machine, or continue to install on your drive."
+        subtitle="Download an ISO to install later, try a live demo, or continue to install on your drive."
         onBack={onBack}
         onNext={onNext}
         nextDisabled={nextBlocked || demoRunning}
         nextLabel="Install"
       >
-      <div className="grid gap-4 md:grid-cols-2">
-        {catalog.map((entry) => {
-          const compatibility = getCompatibility(entry, device);
-          const expanded = expandedId === entry.id;
-          const selected = selectedId === entry.id;
+        {!demoSupported && demoUnsupportedMessage && (
+          <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-relaxed text-white/70">
+            {demoUnsupportedMessage}
+          </div>
+        )}
+        <div className="grid gap-4 md:grid-cols-2">
+          {catalog.map((entry) => {
+            const compatibility = getCompatibility(entry, device);
+            const isSelected = selectedId === entry.id;
+            const status = isoStatus[entry.id];
+            const demoDisabled = entry.comingSoon || entry.manualDownloadOnly || !demoSupported || demoRunning;
+            const downloadDisabled = entry.comingSoon || demoRunning;
 
-          return (
-            <div
-              key={entry.id}
-              className={`relative rounded-3xl border p-5 transition ${
-                selected ? "border-shift-accent bg-shift-accent/10 shadow-glow" : "border-white/10 bg-white/5"
-              } ${entry.comingSoon ? "opacity-50" : ""}`}
-            >
-              {compatibility.recommended && !entry.comingSoon && (
-                <span className="absolute -top-2.5 right-4 rounded-full bg-shift-accent px-3 py-0.5 text-xs font-bold text-shift-navy">
-                  Recommended for you
-                </span>
-              )}
-              <button
-                type="button"
-                disabled={entry.comingSoon || entry.manualDownloadOnly}
-                onClick={() => {
-                  setSelectedId(entry.id);
-                  setExpandedId(expanded ? "" : entry.id);
-                }}
-                className="w-full text-left"
+            return (
+              <div
+                key={entry.id}
+                className={`relative rounded-3xl border p-5 transition ${
+                  isSelected ? "border-shift-accent bg-shift-accent/10 shadow-glow" : "border-white/10 bg-white/5"
+                } ${entry.comingSoon ? "opacity-50" : ""}`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <img src={entry.logo} alt="" className="h-12 w-12" />
-                  <Badge compatibility={compatibility} />
-                </div>
-                <h3 className="mt-4 text-xl font-bold">{entry.name}</h3>
-                <p className="mt-2 text-sm text-white/60">{entry.description}</p>
-              </button>
+                {compatibility.recommended && !entry.comingSoon && (
+                  <span className="absolute -top-2.5 right-4 rounded-full bg-shift-accent px-3 py-0.5 text-xs font-bold text-shift-navy">
+                    Recommended for you
+                  </span>
+                )}
+                <button
+                  type="button"
+                  disabled={entry.comingSoon}
+                  onClick={() => setSelectedId(entry.id)}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <img src={entry.logo} alt="" className="h-12 w-12" />
+                    <Badge compatibility={compatibility} />
+                  </div>
+                  <h3 className="mt-4 text-xl font-bold">{entry.name}</h3>
+                  <p className="mt-2 text-sm text-white/60">{entry.description}</p>
+                </button>
 
-              {expanded && (
-                <div className="mt-5 space-y-4 border-t border-white/10 pt-5">
-                  <DemoPreview entry={entry} />
-                  <p className="text-sm leading-relaxed text-white/70">{entry.longDescription}</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {entry.screenshots.map((shot) => (
-                      <img key={shot} src={shot} alt="" className="rounded-xl border border-white/10" />
-                    ))}
+                {!entry.comingSoon && (
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={downloadDisabled}
+                      onClick={() => handleDownload(entry)}
+                      className={`${buttonClass} border-white/20 bg-white/5 hover:bg-white/10`}
+                    >
+                      {entry.manualDownloadOnly ? "Get ISO" : status?.downloaded ? "Downloaded" : "Download"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={demoDisabled}
+                      title={!demoSupported ? demoUnsupportedMessage : undefined}
+                      onClick={() => handleTryDemo(entry)}
+                      className={`${buttonClass} border-shift-accent/50 bg-shift-accent/15 text-shift-accent hover:bg-shift-accent/25`}
+                    >
+                      Try Demo
+                    </button>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {entry.bestFor.map((tag) => (
-                      <span key={tag} className="rounded-full bg-shift-navy px-3 py-1 text-xs ring-1 ring-shift-accent/30">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-xs text-white/45">
-                    Needs {formatGb(entry.requirements.ram)} RAM, {formatGb(entry.requirements.storage)} storage
-                    {entry.requirements.cpuCores ? `, ${entry.requirements.cpuCores}+ CPU cores` : ""}
-                  </p>
-                  {entry.manualDownloadOnly && (
-                    <p className="text-xs text-amber-200/90">
-                      Automated install not available — download manually from{" "}
-                      <a className="underline" href={entry.manualDownloadUrl} target="_blank" rel="noreferrer">
-                        elementary.io
-                      </a>
-                    </p>
-                  )}
-                  {!entry.comingSoon && !entry.manualDownloadOnly && (
-                    <div className="flex flex-wrap items-center gap-3 pt-2">
-                      <button
-                        type="button"
-                        disabled={demoRunning}
-                        onClick={() => handleTryDemo(entry)}
-                        className="rounded-xl border border-shift-accent/50 bg-shift-accent/15 px-4 py-2 text-sm font-semibold text-shift-accent hover:bg-shift-accent/25 disabled:opacity-40"
-                      >
-                        Try Demo
-                      </button>
-                      {isoStatus[entry.id]?.downloaded && (
-                        <span className="text-xs text-emerald-300/90">ISO ready — install will skip download</span>
-                      )}
-                      {isoStatus[entry.id]?.downloaded === false && isoStatus[entry.id]?.available && (
-                        <span className="text-xs text-white/45">Demo will download the ISO first</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </ScreenShell>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </ScreenShell>
     </>
   );
 }

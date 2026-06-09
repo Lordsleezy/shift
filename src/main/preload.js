@@ -25,10 +25,17 @@ contextBridge.exposeInMainWorld("shiftAPI", {
   getDemoStatus: (distroId) => ipcRenderer.invoke("demo:status", { distroId }),
   startDemo: (distroId) => ipcRenderer.invoke("demo:start", { distroId }),
   cancelDemo: () => ipcRenderer.invoke("demo:cancel"),
+  downloadIso: (distroId) => ipcRenderer.invoke("iso:download", { distroId }),
+  cancelIsoDownload: () => ipcRenderer.invoke("iso:cancel"),
   onDemoProgress: (callback) => {
     const listener = (_event, data) => callback(data);
     ipcRenderer.on("demo:progress", listener);
     return () => ipcRenderer.removeListener("demo:progress", listener);
+  },
+  onIsoProgress: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on("iso:progress", listener);
+    return () => ipcRenderer.removeListener("iso:progress", listener);
   },
   onUpdateReady: (callback) => {
     const listener = (_event, data) => callback(data);
