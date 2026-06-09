@@ -29,7 +29,7 @@ const SCREEN_LABELS = [
 
 const PHASES = ["download", "verify", "extract", "grub", "restore", "companion", "done"];
 const DEMO_OPEN_MESSAGE =
-  "Your demo will open in a new browser tab. This runs Linux directly in your browser — no downloads needed. Close the tab when done and come back to install.";
+  "Your demo will open in a new browser tab. Try the real Linux desktop — no downloads needed. Come back here when ready to install.";
 const PHASE_LABELS = {
   download: "Downloading",
   verify: "Verifying",
@@ -529,7 +529,7 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, onBack, onNext }
   }
 
   function handleTryDemo(entry) {
-    if (entry.comingSoon || !entry.webvmDemoUrl || actionActive.current) return;
+    if (entry.comingSoon || !entry.distroSeaDemoUrl || actionActive.current) return;
     setSelectedId(entry.id);
     setDemoConfirmEntry(entry);
   }
@@ -539,7 +539,7 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, onBack, onNext }
     if (!entry) return;
     setDemoConfirmEntry(null);
     try {
-      const result = await window.shiftAPI.openWebDemo(entry.id);
+      const result = await window.shiftAPI.openDistroSeaDemo(entry.id);
       if (!result?.ok) throw new Error(result?.error || "Could not open demo");
     } catch (err) {
       alert(err.message || String(err));
@@ -586,7 +586,7 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, onBack, onNext }
             const compatibility = getCompatibility(entry, device);
             const isSelected = selectedId === entry.id;
             const status = isoStatus[entry.id];
-            const demoDisabled = entry.comingSoon || !entry.webvmDemoUrl;
+            const demoDisabled = entry.comingSoon || !entry.distroSeaDemoUrl;
             const downloadDisabled = entry.comingSoon;
 
             return (

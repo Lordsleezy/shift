@@ -5,7 +5,7 @@ const { getDriveLayout, applyPartitionPlan } = require("./partition");
 const { startInstall, cancelInstall, rebootToInstall } = require("./install");
 const { executeRevertFromWindows, rebootAfterRevert } = require("./revert");
 const { loadManifestFromWindows } = require("./restore-manifest");
-const { openWebDemo } = require("./demo");
+const { openDistroSeaDemo } = require("./demo");
 const { getIsoStatus, ensureIsoDownloaded } = require("./iso");
 const { initUpdater, quitAndInstall } = require("./updater");
 const { buildAppMenu } = require("./menu");
@@ -105,7 +105,7 @@ ipcMain.handle("iso:status", async (_event, { distroId }) => getIsoStatus(distro
 
 ipcMain.handle("demo:open", async (_event, { distroId }) => {
   try {
-    const result = await openWebDemo(distroId);
+    const result = await openDistroSeaDemo(distroId);
     return { ok: true, result };
   } catch (error) {
     return { ok: false, error: error.message || String(error) };

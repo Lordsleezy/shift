@@ -1,13 +1,10 @@
-const WEBVM_ALPINE_DESKTOP = "https://webvm.io/alpine.html";
-const WEBVM_DEBIAN = "https://webvm.io";
-
-const WEBVM_DEMO_URLS = {
-  zorin: WEBVM_ALPINE_DESKTOP,
-  mint: WEBVM_ALPINE_DESKTOP,
-  popos: WEBVM_ALPINE_DESKTOP,
-  elementary: WEBVM_ALPINE_DESKTOP,
-  ubuntu: WEBVM_DEBIAN,
-  nobara: WEBVM_ALPINE_DESKTOP
+const DISTROSEA_DEMO_URLS = {
+  zorin: "https://distrosea.com/start/zorin-os/",
+  mint: "https://distrosea.com/start/linuxmint/",
+  popos: "https://distrosea.com/start/pop-os/",
+  elementary: "https://distrosea.com/start/elementary-os/",
+  ubuntu: "https://distrosea.com/start/ubuntu/",
+  nobara: "https://distrosea.com/start/nobara/"
 };
 
 const DISTRO_SOURCES = {
@@ -64,15 +61,15 @@ function getDistroName(distroId) {
   return DISTRO_NAMES[distroId] || distroId;
 }
 
-function getWebvmDemoUrl(distroId) {
-  return WEBVM_DEMO_URLS[distroId] || null;
+function getDistroSeaDemoUrl(distroId) {
+  return DISTROSEA_DEMO_URLS[distroId] || null;
 }
 
 module.exports = {
   DISTRO_SOURCES,
   DISTRO_NAMES,
-  WEBVM_DEMO_URLS,
+  DISTROSEA_DEMO_URLS,
   getDistroSource,
   getDistroName,
-  getWebvmDemoUrl
+  getDistroSeaDemoUrl
 };

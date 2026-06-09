@@ -1,15 +1,12 @@
 const gb = 1024 * 1024 * 1024;
 
-const WEBVM_ALPINE_DESKTOP = "https://webvm.io/alpine.html";
-const WEBVM_DEBIAN = "https://webvm.io";
-
 export const osCatalog = [
   {
     id: "zorin",
     name: "Zorin OS",
     logo: "assets/os-logos/zorin.svg",
     description: "Looks and feels just like Windows. Easiest switch.",
-    webvmDemoUrl: WEBVM_ALPINE_DESKTOP,
+    distroSeaDemoUrl: "https://distrosea.com/start/zorin-os/",
     longDescription:
       "Zorin OS rearranges the desktop to feel familiar if you are coming from Windows. Apps, settings, and updates are straightforward — no terminal required for everyday tasks.",
     bestFor: ["Windows switchers", "Everyday use", "First-time Linux users"],
@@ -28,7 +25,7 @@ export const osCatalog = [
     name: "Linux Mint",
     logo: "assets/os-logos/mint.svg",
     description: "Fast, stable, great for older hardware.",
-    webvmDemoUrl: WEBVM_ALPINE_DESKTOP,
+    distroSeaDemoUrl: "https://distrosea.com/start/linuxmint/",
     longDescription:
       "Linux Mint is built for reliability. It stays out of your way, runs well on modest hardware, and includes the apps most people need from day one.",
     bestFor: ["Older PCs", "Stability", "Simple desktops"],
@@ -47,7 +44,7 @@ export const osCatalog = [
     name: "Pop!_OS",
     logo: "assets/os-logos/popos.svg",
     description: "Clean and productive. Great multitasking.",
-    webvmDemoUrl: WEBVM_ALPINE_DESKTOP,
+    distroSeaDemoUrl: "https://distrosea.com/start/pop-os/",
     longDescription:
       "Pop!_OS from System76 focuses on a clean workspace with excellent tiling and developer-friendly defaults. Ideal if you juggle many windows or write code.",
     bestFor: ["Workstations", "Developers", "Multitasking"],
@@ -66,7 +63,7 @@ export const osCatalog = [
     name: "elementary OS",
     logo: "assets/os-logos/elementary.svg",
     description: "Simple and beautiful. Feels like a Mac.",
-    webvmDemoUrl: WEBVM_ALPINE_DESKTOP,
+    distroSeaDemoUrl: "https://distrosea.com/start/elementary-os/",
     longDescription:
       "elementary OS prioritizes calm, focused design. Every app follows the same visual language, making it a natural fit if you prefer a Mac-style desktop.",
     bestFor: ["Mac-style layouts", "Clean design", "Distraction-free work"],
@@ -87,7 +84,7 @@ export const osCatalog = [
     name: "Ubuntu",
     logo: "assets/os-logos/ubuntu.svg",
     description: "The most popular Linux. Huge community support.",
-    webvmDemoUrl: WEBVM_DEBIAN,
+    distroSeaDemoUrl: "https://distrosea.com/start/ubuntu/",
     longDescription:
       "Ubuntu is the world's most widely used desktop Linux. Massive community forums, broad hardware support, and long-term updates make it a safe default choice.",
     bestFor: ["Broad support", "Learning Linux", "Reliable updates"],
@@ -106,7 +103,7 @@ export const osCatalog = [
     name: "Nobara Linux",
     logo: "assets/os-logos/nobara.svg",
     description: "Built for gaming. Best game compatibility.",
-    webvmDemoUrl: WEBVM_ALPINE_DESKTOP,
+    distroSeaDemoUrl: "https://distrosea.com/start/nobara/",
     longDescription:
       "Nobara is Fedora tuned for gaming out of the box — drivers, Proton, and tweaks are preconfigured so Steam and modern titles work with minimal setup.",
     bestFor: ["PC gaming", "Steam", "Modern graphics cards"],

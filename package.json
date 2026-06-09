@@ -1,6 +1,6 @@
 {
   "name": "shift-by-sentinel",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Shift by Sentinel is a cross-platform OS picker and installer for non-technical users.",
   "main": "src/main/main.js",
   "author": "Sentinel Prime",

@@ -1,8 +1,8 @@
 const { shell } = require("electron");
-const { getWebvmDemoUrl } = require("./distro-sources");
+const { getDistroSeaDemoUrl } = require("./distro-sources");
 
-async function openWebDemo(distroId) {
-  const url = getWebvmDemoUrl(distroId);
+async function openDistroSeaDemo(distroId) {
+  const url = getDistroSeaDemoUrl(distroId);
   if (!url) {
     throw new Error("Demo is not available for this operating system yet");
   }
@@ -11,5 +11,5 @@ async function openWebDemo(distroId) {
 }
 
 module.exports = {
-  openWebDemo
+  openDistroSeaDemo
 };
