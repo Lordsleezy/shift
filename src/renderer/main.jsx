@@ -28,6 +28,8 @@ const SCREEN_LABELS = [
 ];
 
 const PHASES = ["download", "verify", "extract", "grub", "restore", "companion", "done"];
+const ARM64_DEMO_MESSAGE =
+  "Live demo requires an Intel or AMD processor. On this device you can install directly — Shift handles everything.";
 const PHASE_LABELS = {
   download: "Downloading",
   verify: "Verifying",
@@ -457,8 +459,10 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, onBack, onNext }
   const selected = catalog.find((e) => e.id === selectedId);
   const nextBlocked = selected?.comingSoon || selected?.manualDownloadOnly;
   const [isoStatus, setIsoStatus] = useState({});
-  const [demoSupported, setDemoSupported] = useState(true);
-  const [demoUnsupportedMessage, setDemoUnsupportedMessage] = useState("");
+  const hostIsArm64 = device?.hostArchitecture === "arm64";
+  const [demoSupported, setDemoSupported] = useState(!hostIsArm64);
+  const [demoUnsupportedMessage, setDemoUnsupportedMessage] = useState(hostIsArm64 ? ARM64_DEMO_MESSAGE : "");
+  const [demoCapabilityLoaded, setDemoCapabilityLoaded] = useState(hostIsArm64);
   const [overlayEntry, setOverlayEntry] = useState(null);
   const [overlayMode, setOverlayMode] = useState(null);
   const [overlayProgress, setOverlayProgress] = useState(null);
@@ -476,7 +480,8 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, onBack, onNext }
       const first = statuses[0];
       if (first) {
         setDemoSupported(first.demoSupported !== false);
-        setDemoUnsupportedMessage(first.demoUnsupportedMessage || "");
+        setDemoUnsupportedMessage(first.demoUnsupportedMessage || ARM64_DEMO_MESSAGE);
+        setDemoCapabilityLoaded(true);
       }
     });
   }, [catalog]);
@@ -596,7 +601,8 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, onBack, onNext }
             const compatibility = getCompatibility(entry, device);
             const isSelected = selectedId === entry.id;
             const status = isoStatus[entry.id];
-            const demoDisabled = entry.comingSoon || entry.manualDownloadOnly || !demoSupported || demoRunning;
+            const demoDisabled =
+              entry.comingSoon || entry.manualDownloadOnly || !demoCapabilityLoaded || !demoSupported || demoRunning;
             const downloadDisabled = entry.comingSoon || demoRunning;
 
             return (
@@ -626,25 +632,29 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, onBack, onNext }
                 </button>
 
                 {!entry.comingSoon && (
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      type="button"
-                      disabled={downloadDisabled}
-                      onClick={() => handleDownload(entry)}
-                      className={`${buttonClass} border-white/20 bg-white/5 hover:bg-white/10`}
-                    >
-                      {entry.manualDownloadOnly ? "Get ISO" : status?.downloaded ? "Downloaded" : "Download"}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={demoDisabled}
-                      title={!demoSupported ? demoUnsupportedMessage : undefined}
-                      onClick={() => handleTryDemo(entry)}
-                      className={`${buttonClass} border-shift-accent/50 bg-shift-accent/15 text-shift-accent hover:bg-shift-accent/25`}
-                    >
-                      Try Demo
-                    </button>
-                  </div>
+                  <>
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        type="button"
+                        disabled={downloadDisabled}
+                        onClick={() => handleDownload(entry)}
+                        className={`${buttonClass} border-white/20 bg-white/5 hover:bg-white/10`}
+                      >
+                        {entry.manualDownloadOnly ? "Get ISO" : status?.downloaded ? "Downloaded" : "Download"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={demoDisabled}
+                        onClick={() => handleTryDemo(entry)}
+                        className={`${buttonClass} border-shift-accent/50 bg-shift-accent/15 text-shift-accent hover:bg-shift-accent/25`}
+                      >
+                        Try Demo
+                      </button>
+                    </div>
+                    {!demoSupported && demoUnsupportedMessage && (
+                      <p className="mt-3 text-xs leading-relaxed text-white/50">{demoUnsupportedMessage}</p>
+                    )}
+                  </>
                 )}
               </div>
             );

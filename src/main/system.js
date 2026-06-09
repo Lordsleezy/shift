@@ -1,4 +1,5 @@
 const os = require("os");
+const { getHostCpuArchitecture } = require("./host-arch");
 const fs = require("fs/promises");
 const path = require("path");
 const { execFile } = require("child_process");
@@ -133,6 +134,7 @@ async function getDeviceReport() {
     cpu: os.cpus()[0]?.model || "Unknown processor",
     cpuCores: os.cpus().length,
     architecture: os.arch(),
+    hostArchitecture: getHostCpuArchitecture(),
     ramBytes: totalRamBytes,
     storageAvailableBytes,
     readiness,

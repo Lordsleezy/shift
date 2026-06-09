@@ -111,6 +111,8 @@ async function launchDemo(isoPath, distroName, hostRamBytes) {
   const spawnOpts = spawnEnvForQemu(qemuPath);
 
   return new Promise((resolve, reject) => {
+    let settled = false;
+
     demoProcess = spawn(qemuPath, args, {
       ...spawnOpts,
       detached: false,
@@ -119,13 +121,20 @@ async function launchDemo(isoPath, distroName, hostRamBytes) {
     });
 
     demoProcess.on("error", (error) => {
+      if (settled) return;
+      settled = true;
       demoProcess = null;
       reject(error);
     });
 
-    demoProcess.on("exit", (code, signal) => {
+    demoProcess.on("spawn", () => {
+      if (settled) return;
+      settled = true;
+      resolve({ ok: true, pid: demoProcess.pid });
+    });
+
+    demoProcess.on("exit", () => {
       demoProcess = null;
-      resolve({ ok: true, exitCode: code, signal });
     });
   });
 }
