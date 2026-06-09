@@ -29,7 +29,7 @@ const SCREEN_LABELS = [
 
 const PHASES = ["download", "verify", "extract", "grub", "restore", "companion", "done"];
 const DEMO_OPEN_MESSAGE =
-  "Your demo will open in a new browser tab. Try the real Linux desktop — no downloads needed. Come back here when ready to install.";
+  "Opening Linux demo in your browser via DistroSea. You may need to wait briefly in a queue — it's free and worth it! Try the real Linux desktop — no downloads needed. Come back here when ready to install.";
 const PHASE_LABELS = {
   download: "Downloading",
   verify: "Verifying",
@@ -635,6 +635,9 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, onBack, onNext }
                         Try Demo
                       </button>
                     </div>
+                    {entry.demoUnavailableMessage && (
+                      <p className="mt-3 text-xs leading-relaxed text-white/50">{entry.demoUnavailableMessage}</p>
+                    )}
                   </>
                 )}
               </div>

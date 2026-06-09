@@ -1,10 +1,9 @@
 const DISTROSEA_DEMO_URLS = {
-  zorin: "https://distrosea.com/start/zorin-os/",
-  mint: "https://distrosea.com/start/linuxmint/",
-  popos: "https://distrosea.com/start/pop-os/",
+  zorin: "https://distrosea.com/select/zorin/",
+  mint: "https://distrosea.com/start/linuxmint-22.3-cinnamon/",
+  popos: "https://distrosea.com/select/popos/",
   elementary: "https://distrosea.com/start/elementary-os/",
-  ubuntu: "https://distrosea.com/start/ubuntu/",
-  nobara: "https://distrosea.com/start/nobara/"
+  ubuntu: "https://distrosea.com/select/ubuntu/"
 };
 
 const DISTRO_SOURCES = {
