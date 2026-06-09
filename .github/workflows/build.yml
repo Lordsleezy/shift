@@ -39,6 +39,30 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Ensure GitHub release includes latest.yml
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+          $version = $pkg.version
+          $tag = "v$version"
+          if (-not (Test-Path "build/latest.yml")) {
+            Write-Error "build/latest.yml was not generated — auto-updater will not work"
+            exit 1
+          }
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --title "Shift by Sentinel v$version" --generate-notes
+          }
+          gh release upload $tag --clobber build/latest.yml build/*.exe build/*.exe.blockmap
+          gh release view $tag --json assets,tagName,isPrerelease | Out-String | Write-Host
+          $assets = (gh release view $tag --json assets | ConvertFrom-Json).assets.name
+          if ($assets -notcontains "latest.yml") {
+            Write-Error "latest.yml is missing from GitHub release $tag"
+            exit 1
+          }
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:

@@ -8,6 +8,7 @@ const { loadManifestFromWindows } = require("./restore-manifest");
 const { checkDemoReady, startDemo, cancelDemoFlow } = require("./demo");
 const { ensureIsoDownloaded } = require("./iso");
 const { initUpdater } = require("./updater");
+const { buildAppMenu } = require("./menu");
 
 let mainWindow = null;
 
@@ -141,6 +142,7 @@ ipcMain.handle("iso:cancel", async () => {
 });
 
 app.whenReady().then(async () => {
+  buildAppMenu();
   await createWindow();
   initUpdater(() => mainWindow);
 
