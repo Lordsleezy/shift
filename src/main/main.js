@@ -5,9 +5,9 @@ const { getDriveLayout, applyPartitionPlan } = require("./partition");
 const { startInstall, cancelInstall, rebootToInstall } = require("./install");
 const { executeRevertFromWindows, rebootAfterRevert } = require("./revert");
 const { loadManifestFromWindows } = require("./restore-manifest");
-const { checkDemoReady, startDemo, cancelDemoFlow } = require("./demo");
-const { ensureIsoDownloaded } = require("./iso");
-const { initUpdater } = require("./updater");
+const { openWebDemo } = require("./demo");
+const { getIsoStatus, ensureIsoDownloaded } = require("./iso");
+const { initUpdater, quitAndInstall } = require("./updater");
 const { buildAppMenu } = require("./menu");
 
 let mainWindow = null;
@@ -38,12 +38,6 @@ async function createWindow() {
 function sendProgress(data) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("install:progress", data);
-  }
-}
-
-function sendDemoProgress(data) {
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send("demo:progress", data);
   }
 }
 
@@ -107,20 +101,15 @@ ipcMain.handle("revert:execute", async () => {
 
 ipcMain.handle("revert:reboot", async () => rebootAfterRevert());
 
-ipcMain.handle("demo:status", async (_event, { distroId }) => checkDemoReady(distroId));
+ipcMain.handle("iso:status", async (_event, { distroId }) => getIsoStatus(distroId));
 
-ipcMain.handle("demo:start", async (_event, { distroId }) => {
+ipcMain.handle("demo:open", async (_event, { distroId }) => {
   try {
-    const result = await startDemo(distroId, sendDemoProgress);
+    const result = await openWebDemo(distroId);
     return { ok: true, result };
   } catch (error) {
     return { ok: false, error: error.message || String(error) };
   }
-});
-
-ipcMain.handle("demo:cancel", async () => {
-  cancelDemoFlow();
-  return { ok: true };
 });
 
 ipcMain.handle("iso:download", async (_event, { distroId }) => {
@@ -138,6 +127,11 @@ ipcMain.handle("iso:download", async (_event, { distroId }) => {
 ipcMain.handle("iso:cancel", async () => {
   isoDownloadController?.abort();
   isoDownloadController = null;
+  return { ok: true };
+});
+
+ipcMain.handle("update:quit-and-install", async () => {
+  quitAndInstall();
   return { ok: true };
 });
 

@@ -85,7 +85,13 @@ async function checkForUpdatesManually() {
   }
 }
 
+function quitAndInstall() {
+  if (!app.isPackaged) return;
+  autoUpdater.quitAndInstall(false, true);
+}
+
 module.exports = {
   initUpdater,
-  checkForUpdatesManually
+  checkForUpdatesManually,
+  quitAndInstall
 };

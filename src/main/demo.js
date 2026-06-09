@@ -1,108 +1,15 @@
-const os = require("os");
-const { ensureIsoDownloaded, getIsoStatus } = require("./iso");
-const { launchDemo, cancelDemo, isDemoRunning, findQemuBinary } = require("./qemu");
-const { getBundledQemuBinary } = require("./qemu-bundle");
-const { getDistroName } = require("./distro-sources");
-const { isWindowsArm64Host } = require("./host-arch");
+const { shell } = require("electron");
+const { getWebvmDemoUrl } = require("./distro-sources");
 
-const DEMO_UNSUPPORTED_ARM64_MESSAGE =
-  "Live demo requires an Intel or AMD processor. On this device you can install directly — Shift handles everything.";
-
-let demoDownloadController = null;
-
-function getDemoCapability() {
-  if (isWindowsArm64Host()) {
-    return {
-      demoSupported: false,
-      demoUnsupportedMessage: DEMO_UNSUPPORTED_ARM64_MESSAGE
-    };
+async function openWebDemo(distroId) {
+  const url = getWebvmDemoUrl(distroId);
+  if (!url) {
+    throw new Error("Demo is not available for this operating system yet");
   }
-  return { demoSupported: true, demoUnsupportedMessage: null };
-}
-
-function emit(onProgress, data) {
-  onProgress?.({
-    ...data,
-    message: data.message || phaseMessage(data.phase)
-  });
-}
-
-function phaseMessage(phase) {
-  const labels = {
-    download: "Downloading ISO for demo",
-    verify: "Verifying ISO checksum",
-    launch: "Starting virtual machine",
-    running: "Demo running — close the QEMU window when finished"
-  };
-  return labels[phase] || phase;
-}
-
-async function checkDemoReady(distroId) {
-  const iso = await getIsoStatus(distroId);
-  const capability = getDemoCapability();
-  const bundled = capability.demoSupported ? getBundledQemuBinary() : null;
-  const qemuPath = capability.demoSupported ? bundled || (await findQemuBinary()) : null;
-  return {
-    ...iso,
-    ...capability,
-    qemuInstalled: Boolean(qemuPath),
-    qemuPath,
-    qemuBundled: Boolean(bundled)
-  };
-}
-
-async function startDemo(distroId, onProgress) {
-  const capability = getDemoCapability();
-  if (!capability.demoSupported) {
-    throw new Error(capability.demoUnsupportedMessage);
-  }
-
-  if (isDemoRunning()) {
-    throw new Error("A demo is already running");
-  }
-
-  demoDownloadController = new AbortController();
-
-  try {
-    const { isoPath, cached } = await ensureIsoDownloaded(
-      distroId,
-      (data) => emit(onProgress, data),
-      demoDownloadController.signal
-    );
-
-    emit(onProgress, {
-      phase: "launch",
-      received: 100,
-      total: 100,
-      percent: 100,
-      cached
-    });
-
-    emit(onProgress, {
-      phase: "running",
-      received: 0,
-      total: 0,
-      percent: 100,
-      message: "Demo running — close the QEMU window when finished"
-    });
-
-    await launchDemo(isoPath, getDistroName(distroId), os.totalmem());
-    return { ok: true, isoPath, cached, running: true };
-  } finally {
-    demoDownloadController = null;
-  }
-}
-
-function cancelDemoFlow() {
-  demoDownloadController?.abort();
-  demoDownloadController = null;
-  cancelDemo();
+  await shell.openExternal(url);
+  return { ok: true, url };
 }
 
 module.exports = {
-  getDemoCapability,
-  checkDemoReady,
-  startDemo,
-  cancelDemoFlow,
-  isDemoRunning
+  openWebDemo
 };

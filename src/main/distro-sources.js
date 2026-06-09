@@ -1,3 +1,15 @@
+const WEBVM_ALPINE_DESKTOP = "https://webvm.io/alpine.html";
+const WEBVM_DEBIAN = "https://webvm.io";
+
+const WEBVM_DEMO_URLS = {
+  zorin: WEBVM_ALPINE_DESKTOP,
+  mint: WEBVM_ALPINE_DESKTOP,
+  popos: WEBVM_ALPINE_DESKTOP,
+  elementary: WEBVM_ALPINE_DESKTOP,
+  ubuntu: WEBVM_DEBIAN,
+  nobara: WEBVM_ALPINE_DESKTOP
+};
+
 const DISTRO_SOURCES = {
   zorin: {
     url: "https://mirrors.edge.kernel.org/zorinos-isos/17/Zorin-OS-17.3-Core-64-bit-r2.iso",
@@ -52,9 +64,15 @@ function getDistroName(distroId) {
   return DISTRO_NAMES[distroId] || distroId;
 }
 
+function getWebvmDemoUrl(distroId) {
+  return WEBVM_DEMO_URLS[distroId] || null;
+}
+
 module.exports = {
   DISTRO_SOURCES,
   DISTRO_NAMES,
+  WEBVM_DEMO_URLS,
   getDistroSource,
-  getDistroName
+  getDistroName,
+  getWebvmDemoUrl
 };

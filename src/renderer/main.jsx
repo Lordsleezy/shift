@@ -28,8 +28,8 @@ const SCREEN_LABELS = [
 ];
 
 const PHASES = ["download", "verify", "extract", "grub", "restore", "companion", "done"];
-const ARM64_DEMO_MESSAGE =
-  "Live demo requires an Intel or AMD processor. On this device you can install directly — Shift handles everything.";
+const DEMO_OPEN_MESSAGE =
+  "Your demo will open in a new browser tab. This runs Linux directly in your browser — no downloads needed. Close the tab when done and come back to install.";
 const PHASE_LABELS = {
   download: "Downloading",
   verify: "Verifying",
@@ -174,9 +174,12 @@ function App() {
   return (
     <div className="dark">
       {updateReady && (
-        <UpdateBanner onDismiss={() => setUpdateReady(false)} />
+        <UpdateBanner
+          onDismiss={() => setUpdateReady(false)}
+          onRestart={() => window.shiftAPI?.quitAndInstall?.()}
+        />
       )}
-      <div className="min-h-screen overflow-hidden bg-shift-surface text-white">
+      <div className={`min-h-screen overflow-hidden bg-shift-surface text-white ${updateReady ? "pt-12" : ""}`}>
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(20,184,166,.18),transparent_34%),radial-gradient(circle_at_80%_10%,rgba(10,22,40,.95),transparent_28%)]" />
         <main className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-5">
           <header className="flex items-center gap-4">
@@ -265,17 +268,26 @@ function App() {
   );
 }
 
-function UpdateBanner({ onDismiss }) {
+function UpdateBanner({ onDismiss, onRestart }) {
   return (
-    <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-between gap-4 border-b border-shift-accent/40 bg-shift-accent px-5 py-3 text-shift-navy shadow-glow">
-      <p className="text-sm font-semibold md:text-base">Update available — restart to install</p>
-      <button
-        type="button"
-        onClick={onDismiss}
-        className="shrink-0 rounded-lg border border-shift-navy/20 bg-shift-navy/10 px-4 py-1.5 text-sm font-semibold hover:bg-shift-navy/20"
-      >
-        Later
-      </button>
+    <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-between gap-4 border-b border-shift-accent/30 bg-shift-accent px-5 py-2.5 text-shift-navy">
+      <p className="text-sm font-semibold">Update available</p>
+      <div className="flex shrink-0 gap-2">
+        <button
+          type="button"
+          onClick={onRestart}
+          className="rounded-lg bg-shift-navy px-4 py-1.5 text-sm font-semibold text-shift-accent hover:bg-shift-navy/90"
+        >
+          Restart Now
+        </button>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="rounded-lg border border-shift-navy/25 bg-shift-navy/10 px-4 py-1.5 text-sm font-semibold hover:bg-shift-navy/20"
+        >
+          Later
+        </button>
+      </div>
     </div>
   );
 }
@@ -403,53 +415,62 @@ function WindowsKey({ device, onBack, onNext }) {
   );
 }
 
-function ProgressOverlay({ entry, mode, progress, error, onCancel }) {
-  const phase = progress?.phase || "download";
+function DownloadOverlay({ entry, progress, error, onCancel }) {
   const percent = progress?.percent ?? 0;
-  const isRunning = mode === "demo" && phase === "running";
-  const isDownload = mode === "download";
-  const title = isRunning
-    ? `Trying ${entry.name}`
-    : isDownload
-      ? `Downloading ${entry.name}`
-      : `Preparing ${entry.name} demo`;
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6 backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-shift-navy p-8 shadow-glow">
-        <h2 className="text-2xl font-bold">{title}</h2>
-        <p className="mt-2 text-sm text-white/60">
-          {isRunning
-            ? "The desktop opens in a separate window. This is a live session — nothing is installed. Close the window when you are done."
-            : progress?.message || "Please wait…"}
-        </p>
+        <h2 className="text-2xl font-bold">Downloading {entry.name}</h2>
+        <p className="mt-2 text-sm text-white/60">{progress?.message || "Please wait…"}</p>
 
-        {!isRunning && (
-          <>
-            {progress?.total > 0 && (
-              <p className="mt-2 text-xs text-white/45">
-                {formatBytes(progress.received)} / {formatBytes(progress.total)}
-              </p>
-            )}
-            <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/10">
-              <div className="h-full rounded-full bg-shift-accent transition-all" style={{ width: `${percent}%` }} />
-            </div>
-          </>
+        {progress?.total > 0 && (
+          <p className="mt-2 text-xs text-white/45">
+            {formatBytes(progress.received)} / {formatBytes(progress.total)}
+          </p>
         )}
+        <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full rounded-full bg-shift-accent transition-all" style={{ width: `${percent}%` }} />
+        </div>
 
         {error && (
           <div className="mt-5 rounded-2xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</div>
         )}
 
-        {!isRunning && (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="mt-6 rounded-xl border border-white/15 px-5 py-3 text-sm hover:bg-white/5"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DemoConfirmDialog({ entry, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-shift-navy p-8 shadow-glow">
+        <h2 className="text-2xl font-bold">Try {entry.name}</h2>
+        <p className="mt-3 text-sm leading-relaxed text-white/70">{DEMO_OPEN_MESSAGE}</p>
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="flex-1 rounded-xl bg-shift-accent px-5 py-3 text-sm font-semibold text-shift-navy hover:bg-shift-accent/90"
+          >
+            Open Demo
+          </button>
           <button
             type="button"
             onClick={onCancel}
-            className="mt-6 rounded-xl border border-white/15 px-5 py-3 text-sm hover:bg-white/5"
+            className="flex-1 rounded-xl border border-white/15 px-5 py-3 text-sm hover:bg-white/5"
           >
             Cancel
           </button>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -459,30 +480,20 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, onBack, onNext }
   const selected = catalog.find((e) => e.id === selectedId);
   const nextBlocked = selected?.comingSoon || selected?.manualDownloadOnly;
   const [isoStatus, setIsoStatus] = useState({});
-  const hostIsArm64 = device?.hostArchitecture === "arm64";
-  const [demoSupported, setDemoSupported] = useState(!hostIsArm64);
-  const [demoUnsupportedMessage, setDemoUnsupportedMessage] = useState(hostIsArm64 ? ARM64_DEMO_MESSAGE : "");
-  const [demoCapabilityLoaded, setDemoCapabilityLoaded] = useState(hostIsArm64);
-  const [overlayEntry, setOverlayEntry] = useState(null);
-  const [overlayMode, setOverlayMode] = useState(null);
-  const [overlayProgress, setOverlayProgress] = useState(null);
-  const [overlayError, setOverlayError] = useState("");
+  const [downloadEntry, setDownloadEntry] = useState(null);
+  const [downloadProgress, setDownloadProgress] = useState(null);
+  const [downloadError, setDownloadError] = useState("");
+  const [demoConfirmEntry, setDemoConfirmEntry] = useState(null);
   const actionActive = useRef(false);
 
   useEffect(() => {
-    if (!window.shiftAPI?.getDemoStatus) return;
-    Promise.all(catalog.map((entry) => window.shiftAPI.getDemoStatus(entry.id))).then((statuses) => {
+    if (!window.shiftAPI?.getIsoStatus) return;
+    Promise.all(catalog.map((entry) => window.shiftAPI.getIsoStatus(entry.id))).then((statuses) => {
       const next = {};
       statuses.forEach((status, i) => {
         next[catalog[i].id] = status;
       });
       setIsoStatus(next);
-      const first = statuses[0];
-      if (first) {
-        setDemoSupported(first.demoSupported !== false);
-        setDemoUnsupportedMessage(first.demoUnsupportedMessage || ARM64_DEMO_MESSAGE);
-        setDemoCapabilityLoaded(true);
-      }
     });
   }, [catalog]);
 
@@ -495,115 +506,88 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, onBack, onNext }
       return;
     }
 
-    setOverlayEntry(entry);
-    setOverlayMode("download");
-    setOverlayError("");
-    setOverlayProgress({ phase: "download", percent: 0, message: "Checking ISO…" });
+    setDownloadEntry(entry);
+    setDownloadError("");
+    setDownloadProgress({ phase: "download", percent: 0, message: "Checking ISO…" });
     actionActive.current = true;
 
-    const unsub = window.shiftAPI.onIsoProgress?.((data) => setOverlayProgress(data));
+    const unsub = window.shiftAPI.onIsoProgress?.((data) => setDownloadProgress(data));
 
     try {
       const result = await window.shiftAPI.downloadIso(entry.id);
       if (!result?.ok) throw new Error(result?.error || "Download failed");
-      const status = await window.shiftAPI.getDemoStatus(entry.id);
+      const status = await window.shiftAPI.getIsoStatus(entry.id);
       setIsoStatus((prev) => ({ ...prev, [entry.id]: status }));
-      setOverlayEntry(null);
-      setOverlayMode(null);
-      setOverlayProgress(null);
+      setDownloadEntry(null);
+      setDownloadProgress(null);
     } catch (err) {
-      setOverlayError(err.message || String(err));
+      setDownloadError(err.message || String(err));
     } finally {
       unsub?.();
       actionActive.current = false;
     }
   }
 
-  async function handleTryDemo(entry) {
-    if (entry.comingSoon || entry.manualDownloadOnly || !demoSupported || actionActive.current) return;
+  function handleTryDemo(entry) {
+    if (entry.comingSoon || !entry.webvmDemoUrl || actionActive.current) return;
     setSelectedId(entry.id);
-    setOverlayEntry(entry);
-    setOverlayMode("demo");
-    setOverlayError("");
-    setOverlayProgress({ phase: "download", percent: 0, message: "Checking ISO…" });
-    actionActive.current = true;
+    setDemoConfirmEntry(entry);
+  }
 
-    const unsub = window.shiftAPI.onDemoProgress?.((data) => setOverlayProgress(data));
-    let failed = false;
-
+  async function confirmDemo() {
+    const entry = demoConfirmEntry;
+    if (!entry) return;
+    setDemoConfirmEntry(null);
     try {
-      const status = await window.shiftAPI.getDemoStatus(entry.id);
-      const result = await window.shiftAPI.startDemo(entry.id);
-      if (!result?.ok) throw new Error(result?.error || "Demo failed to start");
-
-      setIsoStatus((prev) => ({
-        ...prev,
-        [entry.id]: { ...status, downloaded: true, available: true }
-      }));
+      const result = await window.shiftAPI.openWebDemo(entry.id);
+      if (!result?.ok) throw new Error(result?.error || "Could not open demo");
     } catch (err) {
-      failed = true;
-      setOverlayError(err.message || String(err));
-    } finally {
-      unsub?.();
-      actionActive.current = false;
-      if (!failed) {
-        setOverlayEntry(null);
-        setOverlayMode(null);
-        setOverlayProgress(null);
-      }
+      alert(err.message || String(err));
     }
   }
 
-  function cancelOverlay() {
-    if (overlayMode === "download") {
-      window.shiftAPI?.cancelIsoDownload?.();
-    } else {
-      window.shiftAPI?.cancelDemo?.();
-    }
+  function cancelDownload() {
+    window.shiftAPI?.cancelIsoDownload?.();
     actionActive.current = false;
-    setOverlayEntry(null);
-    setOverlayMode(null);
-    setOverlayProgress(null);
-    setOverlayError("");
+    setDownloadEntry(null);
+    setDownloadProgress(null);
+    setDownloadError("");
   }
-
-  const overlayOpen = Boolean(overlayEntry);
-  const demoRunning = overlayMode === "demo" && overlayProgress?.phase === "running";
   const buttonClass =
     "flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
     <>
-      {overlayOpen && (
-        <ProgressOverlay
-          entry={overlayEntry}
-          mode={overlayMode}
-          progress={overlayProgress}
-          error={overlayError}
-          onCancel={cancelOverlay}
+      {downloadEntry && (
+        <DownloadOverlay
+          entry={downloadEntry}
+          progress={downloadProgress}
+          error={downloadError}
+          onCancel={cancelDownload}
+        />
+      )}
+      {demoConfirmEntry && (
+        <DemoConfirmDialog
+          entry={demoConfirmEntry}
+          onConfirm={confirmDemo}
+          onCancel={() => setDemoConfirmEntry(null)}
         />
       )}
       <ScreenShell
         title="Pick your new operating system"
-        subtitle="Download an ISO to install later, try a live demo, or continue to install on your drive."
+        subtitle="Try Linux in your browser, download an ISO, or continue to install on your drive."
         onBack={onBack}
         onNext={onNext}
-        nextDisabled={nextBlocked || demoRunning}
+        nextDisabled={nextBlocked}
         nextLabel="Install"
       >
-        {!demoSupported && demoUnsupportedMessage && (
-          <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-relaxed text-white/70">
-            {demoUnsupportedMessage}
-          </div>
-        )}
         <div className="grid gap-4 md:grid-cols-2">
           {catalog.map((entry) => {
             const compatibility = getCompatibility(entry, device);
             const isSelected = selectedId === entry.id;
             const status = isoStatus[entry.id];
-            const demoDisabled =
-              entry.comingSoon || entry.manualDownloadOnly || !demoCapabilityLoaded || !demoSupported || demoRunning;
-            const downloadDisabled = entry.comingSoon || demoRunning;
+            const demoDisabled = entry.comingSoon || !entry.webvmDemoUrl;
+            const downloadDisabled = entry.comingSoon;
 
             return (
               <div
@@ -651,9 +635,6 @@ function OSPicker({ device, catalog, selectedId, setSelectedId, onBack, onNext }
                         Try Demo
                       </button>
                     </div>
-                    {!demoSupported && demoUnsupportedMessage && (
-                      <p className="mt-3 text-xs leading-relaxed text-white/50">{demoUnsupportedMessage}</p>
-                    )}
                   </>
                 )}
               </div>
