@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Sentinel — Go Back to Windows
+Comment=Remove Linux and restore Windows exactly as it was
+Exec=/opt/sentinel-revert/sentinel-revert.sh
+Icon=system-reboot
+Terminal=false
+Categories=System;Settings;
+Keywords=revert;windows;sentinel;shift;

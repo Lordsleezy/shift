@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { ActivationGate } from "./ActivationGate";
 import { getCompatibility, osCatalog, sortByRecommendation } from "../shared/catalog";
 import "./styles.css";
 
@@ -933,4 +934,8 @@ function ScreenShell({ title, subtitle, children, onBack, onNext, nextDisabled, 
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(document.getElementById("root")).render(
+  <ActivationGate>
+    <App />
+  </ActivationGate>
+);
